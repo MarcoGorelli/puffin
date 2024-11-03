@@ -11,11 +11,11 @@ from typing import NoReturn
 from typing import Sequence
 from typing import TypeVar
 from typing import overload
+from warnings import warn
 
 from narwhals.dependencies import get_polars
 from narwhals.dependencies import is_numpy_array
 from narwhals.schema import Schema
-from narwhals.translate import to_native
 from narwhals.utils import flatten
 from narwhals.utils import is_sequence_but_not_str
 from narwhals.utils import parse_version
@@ -328,6 +328,54 @@ class DataFrame(BaseFrame[DataFrameT]):
     def _lazyframe(self) -> type[LazyFrame[Any]]:
         return LazyFrame
 
+    @property
+    def native(self: Self) -> DataFrameT:
+        """
+        Convert Narwhals DataFrame to native one.
+
+        Returns:
+            Object of class that user started with.
+
+        Examples:
+            >>> import pandas as pd
+            >>> import polars as pl
+            >>> import pyarrow as pa
+            >>> import narwhals as nw
+            >>> data = {"foo": [1, 2, 3], "bar": [6.0, 7.0, 8.0], "ham": ["a", "b", "c"]}
+            >>> df_pd = pd.DataFrame(data)
+            >>> df_pl = pl.DataFrame(data)
+            >>> df_pa = pa.table(data)
+
+            Calling `.native` on a Narwhals DataFrame returns the native object:
+
+            >>> nw.from_native(df_pd).native
+               foo  bar ham
+            0    1  6.0   a
+            1    2  7.0   b
+            2    3  8.0   c
+            >>> nw.from_native(df_pl).native
+            shape: (3, 3)
+            ┌─────┬─────┬─────┐
+            │ foo ┆ bar ┆ ham │
+            │ --- ┆ --- ┆ --- │
+            │ i64 ┆ f64 ┆ str │
+            ╞═════╪═════╪═════╡
+            │ 1   ┆ 6.0 ┆ a   │
+            │ 2   ┆ 7.0 ┆ b   │
+            │ 3   ┆ 8.0 ┆ c   │
+            └─────┴─────┴─────┘
+            >>> nw.from_native(df_pa).native
+            pyarrow.Table
+            foo: int64
+            bar: double
+            ham: string
+            ----
+            foo: [[1,2,3]]
+            bar: [[6,7,8]]
+            ham: [["a","b","c"]]
+        """
+        return self._compliant_frame._native_frame  # type: ignore[no-any-return]
+
     def __init__(
         self,
         df: Any,
@@ -430,7 +478,7 @@ class DataFrame(BaseFrame[DataFrameT]):
         """
         return self._lazyframe(self._compliant_frame.lazy(), level=self._level)
 
-    def to_native(self) -> DataFrameT:
+    def to_native(self: Self) -> DataFrameT:
         """
         Convert Narwhals DataFrame to native one.
 
@@ -449,12 +497,12 @@ class DataFrame(BaseFrame[DataFrameT]):
 
             Calling `to_native` on a Narwhals DataFrame returns the native object:
 
-            >>> nw.from_native(df_pd).to_native()
+            >>> nw.from_native(df_pd).to_native()  # doctest:+SKIP
                foo  bar ham
             0    1  6.0   a
             1    2  7.0   b
             2    3  8.0   c
-            >>> nw.from_native(df_pl).to_native()
+            >>> nw.from_native(df_pl).to_native()  # doctest:+SKIP
             shape: (3, 3)
             ┌─────┬─────┬─────┐
             │ foo ┆ bar ┆ ham │
@@ -465,7 +513,7 @@ class DataFrame(BaseFrame[DataFrameT]):
             │ 2   ┆ 7.0 ┆ b   │
             │ 3   ┆ 8.0 ┆ c   │
             └─────┴─────┴─────┘
-            >>> nw.from_native(df_pa).to_native()
+            >>> nw.from_native(df_pa).to_native()  # doctest:+SKIP
             pyarrow.Table
             foo: int64
             bar: double
@@ -475,8 +523,13 @@ class DataFrame(BaseFrame[DataFrameT]):
             bar: [[6,7,8]]
             ham: [["a","b","c"]]
         """
-
-        return self._compliant_frame._native_frame  # type: ignore[no-any-return]
+        warn(
+            "Use `.native` property instead. `.to_native()` is "
+            "deprecated and it will be removed in future versions",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.native
 
     def to_pandas(self) -> pd.DataFrame:
         """
@@ -2765,6 +2818,45 @@ class LazyFrame(BaseFrame[FrameT]):
     def _dataframe(self) -> type[DataFrame[Any]]:
         return DataFrame
 
+    @property
+    def native(self: Self) -> FrameT:
+        """
+        Convert Narwhals LazyFrame to native one.
+
+        Returns:
+            Object of class that user started with.
+
+        Examples:
+            >>> import pandas as pd
+            >>> import polars as pl
+            >>> import pyarrow as pa
+            >>> import narwhals as nw
+            >>> data = {"foo": [1, 2, 3], "bar": [6.0, 7.0, 8.0], "ham": ["a", "b", "c"]}
+            >>> df_pd = pd.DataFrame(data)
+            >>> df_pl = pl.LazyFrame(data)
+            >>> df_pa = pa.table(data)
+
+            Calling `.native` on a Narwhals DataFrame returns the native object:
+
+            >>> nw.from_native(df_pd).lazy().native
+               foo  bar ham
+            0    1  6.0   a
+            1    2  7.0   b
+            2    3  8.0   c
+            >>> nw.from_native(df_pl).native.collect()
+            shape: (3, 3)
+            ┌─────┬─────┬─────┐
+            │ foo ┆ bar ┆ ham │
+            │ --- ┆ --- ┆ --- │
+            │ i64 ┆ f64 ┆ str │
+            ╞═════╪═════╪═════╡
+            │ 1   ┆ 6.0 ┆ a   │
+            │ 2   ┆ 7.0 ┆ b   │
+            │ 3   ┆ 8.0 ┆ c   │
+            └─────┴─────┴─────┘
+        """
+        return self._compliant_frame._native_frame  # type: ignore[no-any-return]
+
     def __init__(
         self,
         df: Any,
@@ -2820,7 +2912,7 @@ class LazyFrame(BaseFrame[FrameT]):
             | Use `.to_native` to see native output |
             └───────────────────────────────────────┘
             >>> df = lf.group_by("a").agg(nw.all().sum()).collect()
-            >>> df.to_native().sort("a")
+            >>> df.native.sort("a")
             shape: (3, 3)
             ┌─────┬─────┬─────┐
             │ a   ┆ b   ┆ c   │
@@ -2837,7 +2929,7 @@ class LazyFrame(BaseFrame[FrameT]):
             level=self._level,
         )
 
-    def to_native(self) -> FrameT:
+    def to_native(self: Self) -> FrameT:
         """
         Convert Narwhals LazyFrame to native one.
 
@@ -2856,12 +2948,12 @@ class LazyFrame(BaseFrame[FrameT]):
 
             Calling `to_native` on a Narwhals DataFrame returns the native object:
 
-            >>> nw.from_native(df_pd).lazy().to_native()
+            >>> nw.from_native(df_pd).lazy().to_native()  # doctest:+SKIP
                foo  bar ham
             0    1  6.0   a
             1    2  7.0   b
             2    3  8.0   c
-            >>> nw.from_native(df_pl).to_native().collect()
+            >>> nw.from_native(df_pl).to_native().collect()  # doctest:+SKIP
             shape: (3, 3)
             ┌─────┬─────┬─────┐
             │ foo ┆ bar ┆ ham │
@@ -2873,8 +2965,13 @@ class LazyFrame(BaseFrame[FrameT]):
             │ 3   ┆ 8.0 ┆ c   │
             └─────┴─────┴─────┘
         """
-
-        return to_native(narwhals_object=self, strict=True)
+        warn(
+            "Use `.native` property instead. `.to_native()` is "
+            "deprecated and it will be removed in future versions",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.native
 
     # inherited
     def pipe(self, function: Callable[[Any], Self], *args: Any, **kwargs: Any) -> Self:
