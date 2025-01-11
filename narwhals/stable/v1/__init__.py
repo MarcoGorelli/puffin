@@ -1617,6 +1617,68 @@ class Expr(NwExpr):
             ddof=ddof,
         )
 
+    def head(self, n: int = 10) -> Self:
+        r"""Get the first `n` rows.
+
+        Arguments:
+            n: Number of rows to return.
+
+        Returns:
+            A new expression.
+        """
+        return self.__class__(lambda plx: self._to_compliant_expr(plx).head(n))
+
+    def tail(self, n: int = 10) -> Self:
+        r"""Get the last `n` rows.
+
+        Arguments:
+            n: Number of rows to return.
+
+        Returns:
+            A new expression.
+        """
+        return self.__class__(lambda plx: self._to_compliant_expr(plx).tail(n))
+
+    def sample(
+        self: Self,
+        n: int | None = None,
+        *,
+        fraction: float | None = None,
+        with_replacement: bool = False,
+        seed: int | None = None,
+    ) -> Self:
+        """Sample randomly from this expression.
+
+        Arguments:
+            n: Number of items to return. Cannot be used with fraction.
+            fraction: Fraction of items to return. Cannot be used with n.
+            with_replacement: Allow values to be sampled more than once.
+            seed: Seed for the random number generator. If set to None (default), a random
+                seed is generated for each sample operation.
+
+        Returns:
+            A new expression.
+        """
+        return self.__class__(
+            lambda plx: self._to_compliant_expr(plx).sample(
+                n, fraction=fraction, with_replacement=with_replacement, seed=seed
+            )
+        )
+
+    def gather_every(self: Self, n: int, offset: int = 0) -> Self:
+        r"""Take every nth value in the Series and return as new Series.
+
+        Arguments:
+            n: Gather every *n*-th row.
+            offset: Starting index.
+
+        Returns:
+            A new expression.
+        """
+        return self.__class__(
+            lambda plx: self._to_compliant_expr(plx).gather_every(n=n, offset=offset)
+        )
+
     def unique(self, *, maintain_order: bool = False) -> Self:
         """Return unique values of this expression.
 
@@ -1631,6 +1693,19 @@ class Expr(NwExpr):
         return self.__class__(
             lambda plx: self._to_compliant_expr(plx).unique(maintain_order=maintain_order)
         )
+
+    def drop_nulls(self) -> Self:
+        """Drop null values.
+
+        Returns:
+            A new expression.
+
+        Notes:
+            pandas handles null values differently from Polars and PyArrow.
+            See [null_handling](../pandas_like_concepts/null_handling.md/)
+            for reference.
+        """
+        return self.__class__(lambda plx: self._to_compliant_expr(plx).drop_nulls())
 
 
 class Schema(NwSchema):
