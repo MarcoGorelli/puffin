@@ -1617,6 +1617,21 @@ class Expr(NwExpr):
             ddof=ddof,
         )
 
+    def unique(self, *, maintain_order: bool = False) -> Self:
+        """Return unique values of this expression.
+
+        Arguments:
+            maintain_order: Keep the same order as the original expression. This may be more
+                expensive to compute. Settings this to `True` blocks the possibility
+                to run on the streaming engine for Polars.
+
+        Returns:
+            A new expression.
+        """
+        return self.__class__(
+            lambda plx: self._to_compliant_expr(plx).unique(maintain_order=maintain_order)
+        )
+
 
 class Schema(NwSchema):
     """Ordered mapping of column names to their data type.

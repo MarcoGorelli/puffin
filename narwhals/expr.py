@@ -17,6 +17,7 @@ from narwhals.expr_name import ExprNameNamespace
 from narwhals.expr_str import ExprStringNamespace
 from narwhals.utils import _validate_rolling_arguments
 from narwhals.utils import flatten
+from narwhals.utils import issue_deprecation_warning
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -1286,6 +1287,13 @@ class Expr:
     def unique(self, *, maintain_order: bool = False) -> Self:
         """Return unique values of this expression.
 
+        Note:
+            `Expr.unique` is deprecated and will be removed in a future version.
+            Hint: instead of `df.select(nw.col('a').unique())`, use
+            `df.select(nw.col('a')).unique()` instead.
+            Note: `strict` will remain available in `narwhals.stable.v1`.
+            See [stable api](../backcompat.md/) for more information.
+
         Arguments:
             maintain_order: Keep the same order as the original expression. This may be more
                 expensive to compute. Settings this to `True` blocks the possibility
@@ -1293,54 +1301,14 @@ class Expr:
 
         Returns:
             A new expression.
-
-        Examples:
-            >>> import polars as pl
-            >>> import pandas as pd
-            >>> import pyarrow as pa
-            >>> import narwhals as nw
-            >>> from narwhals.typing import IntoFrameT
-            >>>
-            >>> data = {"a": [1, 1, 3, 5, 5], "b": [2, 4, 4, 6, 6]}
-            >>> df_pd = pd.DataFrame(data)
-            >>> df_pl = pl.DataFrame(data)
-            >>> df_pa = pa.table(data)
-
-            Let's define a dataframe-agnostic function:
-
-            >>> def agnostic_unique(df_native: IntoFrameT) -> IntoFrameT:
-            ...     df = nw.from_native(df_native)
-            ...     return df.select(nw.col("a", "b").unique(maintain_order=True)).to_native()
-
-            We can then pass any supported library such as pandas, Polars, or
-            PyArrow to `agnostic_unique`:
-
-            >>> agnostic_unique(df_pd)
-               a  b
-            0  1  2
-            1  3  4
-            2  5  6
-
-            >>> agnostic_unique(df_pl)
-            shape: (3, 2)
-            ┌─────┬─────┐
-            │ a   ┆ b   │
-            │ --- ┆ --- │
-            │ i64 ┆ i64 │
-            ╞═════╪═════╡
-            │ 1   ┆ 2   │
-            │ 3   ┆ 4   │
-            │ 5   ┆ 6   │
-            └─────┴─────┘
-
-            >>> agnostic_unique(df_pa)
-            pyarrow.Table
-            a: int64
-            b: int64
-            ----
-            a: [[1,3,5]]
-            b: [[2,4,6]]
         """
+        msg = (
+            "`Expr.unique` is deprecated and will be removed in a future version.\n\n"
+            "Hint: instead of `df.select(nw.col('a').unique())`, use `df.select(nw.col('a')).unique()`.\n\n"
+            "Note: `strict` will remain available in `narwhals.stable.v1`.\n"
+            "See [stable api](../backcompat.md/) for more information.\n"
+        )
+        issue_deprecation_warning(msg, _version="1.22.0")
         return self.__class__(
             lambda plx: self._to_compliant_expr(plx).unique(maintain_order=maintain_order)
         )
